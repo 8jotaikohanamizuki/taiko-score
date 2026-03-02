@@ -1,1 +1,739 @@
 
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>テキストで作る太鼓譜</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@400;700;900&family=Zen+Antique&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #0e0b08;
+    --surface: #1a1410;
+    --border: #3d2e1e;
+    --don: #c8420a;
+    --ka: #1a6ea8;
+    --empty: #2a2018;
+    --text: #e8d5b0;
+    --text-dim: #8a7060;
+    --accent: #c8420a;
+    --gold: #c8a84a;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: 'Noto Serif JP', serif;
+    min-height: 100vh;
+    background-image: 
+      radial-gradient(ellipse at 20% 50%, rgba(200,66,10,0.05) 0%, transparent 60%),
+      radial-gradient(ellipse at 80% 20%, rgba(200,168,74,0.03) 0%, transparent 50%);
+  }
+
+  header {
+    border-bottom: 1px solid var(--border);
+    padding: 24px 32px;
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+    background: rgba(26,20,16,0.8);
+    backdrop-filter: blur(8px);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+  }
+
+  header h1 {
+    font-family: 'Zen Antique', serif;
+    font-size: 1.5rem;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+  }
+
+  header span {
+    color: var(--text-dim);
+    font-size: 0.8rem;
+  }
+
+  .container {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 32px 24px;
+    display: grid;
+    grid-template-columns: 1fr 1.6fr;
+    gap: 32px;
+  }
+
+  .panel {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+
+  .panel-header {
+    background: rgba(61,46,30,0.4);
+    padding: 12px 16px;
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+  }
+
+  /* LEFT: Input */
+  .left { display: flex; flex-direction: column; }
+
+  .meta-inputs {
+    padding: 16px;
+    border-bottom: 1px solid var(--border);
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+
+  .meta-inputs input {
+    background: rgba(0,0,0,0.3);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    color: var(--text);
+    padding: 8px 10px;
+    font-family: inherit;
+    font-size: 0.85rem;
+    width: 100%;
+  }
+
+  .meta-inputs input::placeholder { color: var(--text-dim); }
+  .meta-inputs input:focus { outline: 1px solid var(--don); }
+
+  .meta-inputs .full { grid-column: 1 / -1; }
+
+  textarea {
+    background: transparent;
+    border: none;
+    color: var(--text);
+    font-family: 'Courier New', monospace;
+    font-size: 0.9rem;
+    line-height: 1.8;
+    padding: 16px;
+    resize: none;
+    flex: 1;
+    min-height: 340px;
+    letter-spacing: 0.05em;
+  }
+
+  textarea:focus { outline: none; }
+
+  .reference {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    font-size: 0.72rem;
+    color: var(--text-dim);
+    line-height: 2;
+  }
+
+  .reference code {
+    background: rgba(255,255,255,0.06);
+    padding: 1px 5px;
+    border-radius: 2px;
+    font-family: 'Courier New', monospace;
+    color: var(--gold);
+  }
+
+  /* Controls */
+  .controls {
+    padding: 12px 16px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    gap: 8px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .btn {
+    background: rgba(61,46,30,0.5);
+    border: 1px solid var(--border);
+    color: var(--text);
+    padding: 8px 16px;
+    border-radius: 3px;
+    cursor: pointer;
+    font-family: 'Noto Serif JP', serif;
+    font-size: 0.8rem;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+  }
+
+  .btn:hover { background: rgba(200,66,10,0.15); border-color: var(--don); }
+  .btn.primary { background: var(--don); border-color: var(--don); color: #fff; }
+  .btn.primary:hover { background: #e04d10; }
+
+  .tempo-control {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    margin-left: auto;
+    font-size: 0.78rem;
+    color: var(--text-dim);
+  }
+
+  .tempo-control input[type=range] {
+    width: 80px;
+    accent-color: var(--don);
+  }
+
+  /* RIGHT: Score display */
+  .right { display: flex; flex-direction: column; }
+
+  #score-output {
+    padding: 20px;
+    flex: 1;
+    overflow-y: auto;
+    min-height: 500px;
+  }
+
+  .score-title {
+    font-family: 'Zen Antique', serif;
+    font-size: 1.4rem;
+    color: var(--gold);
+    margin-bottom: 4px;
+    letter-spacing: 0.12em;
+  }
+
+  .score-meta {
+    font-size: 0.75rem;
+    color: var(--text-dim);
+    margin-bottom: 20px;
+    letter-spacing: 0.1em;
+  }
+
+  .section-mark {
+    font-size: 0.75rem;
+    color: var(--gold);
+    letter-spacing: 0.1em;
+    margin: 16px 0 6px;
+    border-left: 2px solid var(--gold);
+    padding-left: 8px;
+  }
+
+  .measures-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-bottom: 6px;
+    align-items: flex-start;
+  }
+
+  .measure {
+    display: flex;
+    gap: 2px;
+    background: rgba(0,0,0,0.2);
+    border: 1px solid var(--border);
+    border-radius: 3px;
+    padding: 4px;
+    position: relative;
+  }
+
+  .measure.current-measure {
+    border-color: var(--gold);
+    background: rgba(200,168,74,0.05);
+  }
+
+  .beat {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.7rem;
+    font-weight: bold;
+    position: relative;
+    transition: transform 0.05s, box-shadow 0.05s;
+  }
+
+  .beat.don {
+    background: var(--don);
+    color: #fff;
+    box-shadow: 0 0 6px rgba(200,66,10,0.4);
+  }
+
+  .beat.ka {
+    background: transparent;
+    border: 2px solid var(--ka);
+    color: var(--ka);
+  }
+
+  .beat.rest {
+    background: var(--empty);
+    border: 1px solid var(--border);
+    color: transparent;
+  }
+
+  .beat.hit-anim {
+    transform: scale(1.3);
+    box-shadow: 0 0 16px rgba(200,66,10,0.8);
+  }
+
+  .beat.ka.hit-anim {
+    box-shadow: 0 0 16px rgba(26,110,168,0.8);
+  }
+
+  /* measure number */
+  .measure::before {
+    content: attr(data-num);
+    position: absolute;
+    top: -14px;
+    left: 0;
+    font-size: 0.55rem;
+    color: var(--text-dim);
+  }
+
+  /* repeat brackets */
+  .repeat-start { border-left: 3px solid var(--gold) !important; }
+  .repeat-end   { border-right: 3px solid var(--gold) !important; }
+
+  .bar-group { margin-top: 18px; }
+
+  .legend {
+    display: flex;
+    gap: 16px;
+    padding: 12px 20px;
+    border-top: 1px solid var(--border);
+    font-size: 0.72rem;
+    color: var(--text-dim);
+  }
+
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .legend-dot {
+    width: 14px;
+    height: 14px;
+    border-radius: 50%;
+  }
+
+  .legend-dot.don { background: var(--don); }
+  .legend-dot.ka  { border: 2px solid var(--ka); }
+  .legend-dot.rest { background: var(--empty); border: 1px solid var(--border); }
+
+  .empty-state {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 300px;
+    color: var(--text-dim);
+    font-size: 0.85rem;
+    letter-spacing: 0.1em;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .empty-state .drum-icon {
+    font-size: 3rem;
+    opacity: 0.3;
+  }
+
+  .samples {
+    padding: 12px 16px;
+    border-top: 1px solid var(--border);
+    display: flex;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .sample-btn {
+    background: rgba(200,168,74,0.08);
+    border: 1px solid rgba(200,168,74,0.25);
+    color: var(--gold);
+    padding: 4px 10px;
+    border-radius: 2px;
+    cursor: pointer;
+    font-family: 'Noto Serif JP', serif;
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    transition: all 0.15s;
+  }
+
+  .sample-btn:hover { background: rgba(200,168,74,0.15); }
+
+  @media (max-width: 768px) {
+    .container { grid-template-columns: 1fr; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>太鼓譜</h1>
+  <span>テキストで作る太鼓楽譜</span>
+</header>
+
+<div class="container">
+  <!-- LEFT: Input panel -->
+  <div class="panel left">
+    <div class="panel-header">
+      入力
+      <span style="color:var(--text-dim);font-size:0.7rem">d=ドン　k=カ　-=休符</span>
+    </div>
+    <div class="meta-inputs">
+      <input id="inp-title" class="full" placeholder="曲名" />
+      <input id="inp-artist" placeholder="演奏者/団体" />
+      <input id="inp-time" placeholder="拍子: 4/4" />
+    </div>
+    <textarea id="score-input" spellcheck="false" placeholder="[Intro]
+| d - - - | d - d - | - - d d |
+
+[テーマ]
+|: d d k - | d - k k | d d d k | d - - - :|
+
+[サビ]
+| d d d d | k k k k | d k d k | d - - - |"></textarea>
+    <div class="samples">
+      <span style="font-size:0.72rem;color:var(--text-dim);margin-right:4px">サンプル:</span>
+      <button class="sample-btn" onclick="loadSample('basic')">基本パターン</button>
+      <button class="sample-btn" onclick="loadSample('matsuri')">お祭りリズム</button>
+      <button class="sample-btn" onclick="loadSample('miyako')">宮太鼓</button>
+    </div>
+    <div class="reference">
+      <code>|</code> 小節区切り　
+      <code>d</code> ドン（面）　
+      <code>D</code> 大ドン　
+      <code>k</code> カ（縁）　
+      <code>K</code> 大カ　
+      <code>-</code> 休符<br>
+      <code>|:</code> <code>:|</code> リピート　
+      <code>[A]</code> セクション名　
+      <code>%</code> 前の小節を繰り返し
+    </div>
+  </div>
+
+  <!-- RIGHT: Score display -->
+  <div class="panel right">
+    <div class="panel-header">
+      楽譜
+    </div>
+    <div class="controls">
+      <button class="btn primary" id="btn-play" onclick="togglePlay()">▶ 再生</button>
+      <button class="btn" onclick="stopPlay()">⏹ 停止</button>
+      <button class="btn" onclick="window.print()">🖨 印刷</button>
+      <div class="tempo-control">
+        <span>テンポ</span>
+        <input type="range" id="tempo" min="40" max="200" value="120" oninput="updateTempo(this.value)">
+        <span id="tempo-val">♩=120</span>
+      </div>
+    </div>
+    <div id="score-output">
+      <div class="empty-state">
+        <div class="drum-icon">🥁</div>
+        <div>左に楽譜を入力してください</div>
+      </div>
+    </div>
+    <div class="legend">
+      <div class="legend-item"><div class="legend-dot don"></div>ドン（面）d/D</div>
+      <div class="legend-item"><div class="legend-dot ka"></div>カ（縁）k/K</div>
+      <div class="legend-item"><div class="legend-dot rest"></div>休符 -</div>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── PARSER ───────────────────────────────────────────────
+
+function parseScore(text) {
+  const lines = text.split('\n').map(l => l.trim()).filter(l => l.length > 0);
+  const sections = [];
+  let currentSection = null;
+  let lastMeasure = null;
+
+  for (let line of lines) {
+    // Section marker [X]
+    const secMatch = line.match(/^\[(.+?)\]/);
+    if (secMatch) {
+      currentSection = { name: secMatch[1], measures: [] };
+      sections.push(currentSection);
+      // rest of line may have measures
+      line = line.slice(secMatch[0].length).trim();
+      if (!line) continue;
+    }
+
+    if (!currentSection) {
+      currentSection = { name: null, measures: [] };
+      sections.push(currentSection);
+    }
+
+    // Parse measures from line
+    // split by |
+    const parts = line.split('|');
+    for (let i = 0; i < parts.length; i++) {
+      const part = parts[i].trim();
+      if (!part) continue;
+
+      let repeatStart = false, repeatEnd = false;
+      let content = part;
+
+      if (content.startsWith(':')) { repeatStart = true; content = content.slice(1).trim(); }
+      if (content.endsWith(':')) { repeatEnd = true; content = content.slice(0, -1).trim(); }
+
+      // repeat symbol %
+      if (content === '%') {
+        if (lastMeasure) {
+          const m = { ...lastMeasure, repeatStart, repeatEnd, num: '' };
+          currentSection.measures.push(m);
+          lastMeasure = m;
+        }
+        continue;
+      }
+
+      // parse beats: d D k K -
+      const beats = content.split(/\s+/).filter(b => b.length > 0);
+      if (beats.length === 0) continue;
+
+      const measure = {
+        beats: beats.map(b => parseBeats(b)).flat(),
+        repeatStart, repeatEnd
+      };
+      currentSection.measures.push(measure);
+      lastMeasure = measure;
+    }
+  }
+
+  return sections;
+}
+
+function parseBeats(token) {
+  // single char tokens
+  const map = { 'd': 'don', 'D': 'DON', 'k': 'ka', 'K': 'KA', '-': 'rest' };
+  if (map[token]) return [{ type: map[token] }];
+  // multi-char: dkdk etc
+  return token.split('').map(c => ({ type: map[c] || 'rest' }));
+}
+
+// ─── RENDERER ───────────────────────────────────────────────
+
+function renderScore(sections, title, artist, time) {
+  const out = document.getElementById('score-output');
+  if (sections.length === 0 || sections.every(s => s.measures.length === 0)) {
+    out.innerHTML = `<div class="empty-state"><div class="drum-icon">🥁</div><div>左に楽譜を入力してください</div></div>`;
+    return;
+  }
+
+  let html = '';
+  if (title) html += `<div class="score-title">${escHtml(title)}</div>`;
+  if (artist || time) html += `<div class="score-meta">${escHtml(artist || '')}${artist && time ? '　' : ''}${escHtml(time || '')}</div>`;
+
+  let globalMeasureNum = 1;
+  allBeats = []; // for playback
+
+  for (const sec of sections) {
+    if (sec.measures.length === 0) continue;
+    html += `<div class="bar-group">`;
+    if (sec.name) html += `<div class="section-mark">${escHtml(sec.name)}</div>`;
+    html += `<div class="measures-row">`;
+
+    for (const m of sec.measures) {
+      let cls = 'measure';
+      if (m.repeatStart) cls += ' repeat-start';
+      if (m.repeatEnd) cls += ' repeat-end';
+      html += `<div class="${cls}" data-measure="${globalMeasureNum}" data-num="${globalMeasureNum}">`;
+
+      for (let bi = 0; bi < m.beats.length; bi++) {
+        const b = m.beats[bi];
+        const beatId = `beat-${globalMeasureNum}-${bi}`;
+        let bcls = 'beat ';
+        let label = '';
+        if (b.type === 'don' || b.type === 'DON') { bcls += 'don'; label = b.type === 'DON' ? '●' : '●'; }
+        else if (b.type === 'ka' || b.type === 'KA') { bcls += 'ka'; label = '×'; }
+        else { bcls += 'rest'; }
+        html += `<div class="${bcls}" id="${beatId}">${label}</div>`;
+        allBeats.push({ id: beatId, type: b.type });
+      }
+
+      html += `</div>`;
+      globalMeasureNum++;
+    }
+
+    html += `</div></div>`;
+  }
+
+  out.innerHTML = html;
+}
+
+function escHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+// ─── PLAYBACK ───────────────────────────────────────────────
+
+let audioCtx = null;
+let allBeats = [];
+let playInterval = null;
+let currentBeat = 0;
+let tempo = 120;
+
+function getAudioCtx() {
+  if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+  return audioCtx;
+}
+
+function playDon(time, volume = 1) {
+  const ctx = getAudioCtx();
+  // Low resonant hit
+  const osc = ctx.createOscillator();
+  const gain = ctx.createGain();
+  osc.connect(gain); gain.connect(ctx.destination);
+  osc.frequency.setValueAtTime(120, time);
+  osc.frequency.exponentialRampToValueAtTime(60, time + 0.15);
+  gain.gain.setValueAtTime(volume * 0.7, time);
+  gain.gain.exponentialRampToValueAtTime(0.001, time + 0.4);
+  osc.start(time); osc.stop(time + 0.4);
+}
+
+function playKa(time, volume = 1) {
+  const ctx = getAudioCtx();
+  // High sharp click
+  const bufLen = ctx.sampleRate * 0.05;
+  const buf = ctx.createBuffer(1, bufLen, ctx.sampleRate);
+  const data = buf.getChannelData(0);
+  for (let i = 0; i < bufLen; i++) data[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / bufLen, 8);
+  const src = ctx.createBufferSource();
+  const gain = ctx.createGain();
+  const filter = ctx.createBiquadFilter();
+  filter.type = 'highpass'; filter.frequency.value = 2000;
+  src.buffer = buf;
+  src.connect(filter); filter.connect(gain); gain.connect(ctx.destination);
+  gain.gain.setValueAtTime(volume * 1.2, time);
+  src.start(time);
+}
+
+function updateTempo(val) {
+  tempo = parseInt(val);
+  document.getElementById('tempo-val').textContent = `♩=${tempo}`;
+}
+
+function togglePlay() {
+  if (playInterval) {
+    stopPlay();
+  } else {
+    startPlay();
+  }
+}
+
+function startPlay() {
+  if (allBeats.length === 0) return;
+  currentBeat = 0;
+  const btn = document.getElementById('btn-play');
+  btn.textContent = '⏸ 一時停止';
+
+  const beatDuration = 60 / tempo * 1000;
+  playInterval = setInterval(() => {
+    if (currentBeat >= allBeats.length) {
+      stopPlay(); return;
+    }
+    const b = allBeats[currentBeat];
+    const el = document.getElementById(b.id);
+    if (el) {
+      el.classList.add('hit-anim');
+      setTimeout(() => el.classList.remove('hit-anim'), 100);
+      // Scroll into view
+      el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+    const ctx = getAudioCtx();
+    const now = ctx.currentTime;
+    if (b.type === 'don') playDon(now);
+    else if (b.type === 'DON') playDon(now, 1.5);
+    else if (b.type === 'ka') playKa(now);
+    else if (b.type === 'KA') playKa(now, 1.5);
+
+    currentBeat++;
+  }, beatDuration);
+}
+
+function stopPlay() {
+  if (playInterval) { clearInterval(playInterval); playInterval = null; }
+  document.getElementById('btn-play').textContent = '▶ 再生';
+  currentBeat = 0;
+}
+
+// ─── SAMPLES ───────────────────────────────────────────────
+
+const samples = {
+  basic: `title: 基本パターン
+time: 4/4
+---
+[A]
+| d - - - | d - d - | d - d d | d - - - |
+| d - d - | d d - - | d - k - | d - - - |`,
+
+  matsuri: `title: お祭りリズム
+time: 4/4
+---
+[Intro]
+| d - k - | d - k - |
+
+[メイン]
+|: d d - d | k - k - | d d d - | d - k k :|
+
+[フィル]
+| d k d k | d k d k | d d d d | d - - - |`,
+
+  miyako: `title: 宮太鼓
+time: 4/4
+---
+[A]
+| d - - k | d - d k | d k d - | d - - - |
+
+[B]
+|: D - k k | d d - k | D - k k | d - - - :|
+
+[Coda]
+| d d d d | D D D D | d - - - |`
+};
+
+function loadSample(name) {
+  const s = samples[name];
+  if (!s) return;
+  const lines = s.split('\n');
+  let title = '', artist = '', time = '', body = [];
+  let inHeader = true;
+  for (const l of lines) {
+    if (inHeader && l.startsWith('title:')) { title = l.replace('title:', '').trim(); continue; }
+    if (inHeader && l.startsWith('time:')) { time = l.replace('time:', '').trim(); continue; }
+    if (inHeader && l.startsWith('---')) { inHeader = false; continue; }
+    body.push(l);
+  }
+  document.getElementById('inp-title').value = title;
+  document.getElementById('inp-time').value = time;
+  document.getElementById('score-input').value = body.join('\n').trim();
+  update();
+}
+
+// ─── MAIN ───────────────────────────────────────────────────
+
+function update() {
+  const text = document.getElementById('score-input').value;
+  const title = document.getElementById('inp-title').value;
+  const artist = document.getElementById('inp-artist').value;
+  const time = document.getElementById('inp-time').value;
+  const sections = parseScore(text);
+  renderScore(sections, title, artist, time);
+}
+
+document.getElementById('score-input').addEventListener('input', update);
+document.getElementById('inp-title').addEventListener('input', update);
+document.getElementById('inp-artist').addEventListener('input', update);
+document.getElementById('inp-time').addEventListener('input', update);
+
+// Init with sample
+loadSample('matsuri');
+</script>
+</body>
+</html>
